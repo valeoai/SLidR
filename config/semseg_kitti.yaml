@@ -1,0 +1,49 @@
+dataset : "kitti"
+working_dir : "output/semseg/semantic_kitti/"
+
+# if set to True, use cylindrical coordinates, otherwise use cartesian
+cylindrical_coordinates : True
+# size of the voxel in each dimension for cartesian coordinates,
+# and in rho and z for cylindrical (angular is always 1°)
+voxel_size : 0.1
+# whether to use the intensity, or dummy colors as inputs
+use_intensity : True
+batch_size : 10
+# learning rate
+optimizer : 'sgd'
+scheduler : 'cosine'
+lr : 0.05
+lr_head : Null
+sgd_momentum : 0.9
+sgd_dampening : 0.1
+weight_decay : 0.0001
+weight_decay_head : Null
+num_epochs : 25
+# number of GPUs and CPU threads to use
+num_gpus : 1
+num_threads : 4
+# 3D convolution kernel size
+kernel_size : 3
+bn_momentum : 0.02
+# whether to use the true validation set or the custom parametrization set
+training : "validate"  # 'parametrize'
+# lovasz is actually a sum of both losses
+loss : "lovasz"  # "crossentropy"
+# use the frozen backbone setup
+freeze_layers : False
+# transformations to apply
+transforms_clouds : ["Rotation", "FlipAxis"]
+# only keep 1 in dataset_skip_step training examples (here use 1% of the data)
+dataset_skip_step : 100
+# path to the pretraining weights to use. None is random initialization
+pretraining_path : Null
+# path to downstream weights to continue a previous training
+resume_path : Null
+# Where to log results for evaluate
+log_evaluate : Null
+
+# WARNING: DO NOT CHANGE THE FOLLOWING PARAMETERS
+# ===============================================
+model_n_out : 20
+ignore_index : 0
+normalize_features : False

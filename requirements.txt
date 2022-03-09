@@ -1,0 +1,12 @@
+torch == 1.8.1
+numpy == 1.20.2
+MinkowskiEngine == 0.5.3
+nuscenes-devkit == 1.1.9
+copy
+tqdm
+pytorch_lightning == 1.4.0
+Pillow == 8.3.1
+pyquaternion
+multiprocessing
+scikit-image == 0.18.2
+torchvision == 0.9.1
