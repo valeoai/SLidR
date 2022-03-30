@@ -3,13 +3,13 @@ import copy
 import torch
 import numpy as np
 from PIL import Image
-import MinkowskiEngine as ME
 from pyquaternion import Quaternion
 from torch.utils.data import Dataset
 from nuscenes.nuscenes import NuScenes
 from nuscenes.utils.geometry_utils import view_points
 from nuscenes.utils.splits import create_splits_scenes
 from nuscenes.utils.data_classes import LidarPointCloud
+from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
 
 
 CUSTOM_SPLIT = [
@@ -33,27 +33,44 @@ CUSTOM_SPLIT = [
 ]
 
 
-def minkunet_collate_pair_fn(list_data):
+def mean_vfe(voxel_features, voxel_num_points):
+    # voxel_features, voxel_num_points = batch_dict['voxels'], batch_dict['voxel_num_points']
+    points_mean = voxel_features[:, :, :].sum(dim=1, keepdim=False)
+    normalizer = torch.clamp_min(voxel_num_points.view(-1, 1), min=1.0).type_as(voxel_features)
+    points_mean = points_mean / normalizer
+    voxel_features = points_mean.contiguous()
+
+    return voxel_features
+
+
+def spconv_collate_pair_fn(list_data):
     """
     Collate function adapted for creating batches with MinkowskiEngine.
     """
     (
+        pc,
         coords,
         feats,
         images,
         pairing_points,
         pairing_images,
-        inverse_indexes,
+        num_points,
         superpixels,
     ) = list(zip(*list_data))
     batch_n_points, batch_n_pairings = [], []
+
+    pc_batch = []
+    offset = 0
+    for batch_id in range(len(pc)):
+        pc_batch.append(torch.cat((torch.ones((pc[batch_id].shape[0], 1)) * batch_id, pc[batch_id]), 1))
+        pairing_points[batch_id][:] += offset
+        offset += pc[batch_id].shape[0]
 
     offset = 0
     for batch_id in range(len(coords)):
 
         # Move batchids to the beginning
         coords[batch_id][:, 0] = batch_id
-        pairing_points[batch_id][:] += offset
         pairing_images[batch_id][:, 0] += batch_id * images[0].shape[0]
 
         batch_n_points.append(coords[batch_id].shape[0])
@@ -62,24 +79,28 @@ def minkunet_collate_pair_fn(list_data):
 
     # Concatenate all lists
     coords_batch = torch.cat(coords, 0).int()
+    pc_batch = torch.cat(pc_batch, 0)
     pairing_points = torch.tensor(np.concatenate(pairing_points))
     pairing_images = torch.tensor(np.concatenate(pairing_images))
     feats_batch = torch.cat(feats, 0).float()
     images_batch = torch.cat(images, 0).float()
     superpixels_batch = torch.tensor(np.concatenate(superpixels))
+    num_points = torch.cat(num_points, 0)
+    feats_batch = mean_vfe(feats_batch, num_points)
     return {
-        "sinput_C": coords_batch,
-        "sinput_F": feats_batch,
+        "pc": pc_batch,
+        "coordinates": coords_batch,
+        "voxels": feats_batch,
         "input_I": images_batch,
         "pairing_points": pairing_points,
         "pairing_images": pairing_images,
         "batch_n_pairings": batch_n_pairings,
-        "inverse_indexes": inverse_indexes,
+        "num_points": num_points,
         "superpixels": superpixels_batch,
     }
 
 
-class NuScenesMatchDataset(Dataset):
+class NuScenesMatchDatasetSpconv(Dataset):
     """
     Dataset matching a 3D points cloud and an image using projection.
     """
@@ -97,10 +118,22 @@ class NuScenesMatchDataset(Dataset):
         self.shuffle = shuffle
         self.cloud_transforms = cloud_transforms
         self.mixed_transforms = mixed_transforms
-        self.voxel_size = config["voxel_size"]
-        self.cylinder = config["cylindrical_coordinates"]
+        if config["dataset"] == "nuscenes":
+            self.voxel_size = [0.1, 0.1, 0.2]  # nuScenes
+            self.point_cloud_range = np.array([-51.2, -51.2, -5.0, 51.2, 51.2, 3.0], dtype=np.float32)  # nuScenes
+            MAX_POINTS_PER_VOXEL = 10  # nuScenes
+            MAX_NUMBER_OF_VOXELS = 60000  # nuScenes
+            self._voxel_generator = VoxelGenerator(
+                voxel_size=self.voxel_size,
+                point_cloud_range=self.point_cloud_range,
+                max_num_points=MAX_POINTS_PER_VOXEL,
+                max_voxels=MAX_NUMBER_OF_VOXELS
+            )
+        else:
+            raise Exception("Dataset unknown")
         self.superpixels_type = config["superpixels_type"]
         self.bilinear_decoder = config["decoder"] == "bilinear"
+        self.num_point_features = 4
 
         if "cached_nuscenes" in kwargs:
             self.nusc = kwargs["cached_nuscenes"]
@@ -156,6 +189,13 @@ class NuScenesMatchDataset(Dataset):
         pointsensor = self.nusc.get("sample_data", data["LIDAR_TOP"])
         pcl_path = os.path.join(self.nusc.dataroot, pointsensor["filename"])
         pc_original = LidarPointCloud.from_file(pcl_path)
+        pc = pc_original.points
+        dist = pc[0] * pc[0] + pc[1] * pc[1]
+        mask = (dist <= 2621.44) & \
+               (pc[2] >= self.point_cloud_range[2]) & \
+               (pc[2] <= self.point_cloud_range[5])
+        pc_original = LidarPointCloud(pc[:, mask])
+
         pc_ref = pc_original.points
 
         images = []
@@ -256,6 +296,12 @@ class NuScenesMatchDataset(Dataset):
     def __len__(self):
         return len(self.list_keyframes)
 
+    def _voxelize(self, points):
+        voxel_output = self._voxel_generator.generate(points.numpy())
+        voxels, coordinates, num_points = \
+            voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
+        return voxels, coordinates, num_points
+
     def __getitem__(self, idx):
         (
             pc,
@@ -272,6 +318,7 @@ class NuScenesMatchDataset(Dataset):
 
         if self.cloud_transforms:
             pc = self.cloud_transforms(pc)
+        # pc = torch.cat((pc, intensity), 1)
         if self.mixed_transforms:
             (
                 pc,
@@ -284,39 +331,25 @@ class NuScenesMatchDataset(Dataset):
                 pc, intensity, images, pairing_points, pairing_images, superpixels
             )
 
-        if self.cylinder:
-            # Transform to cylinder coordinate and scale for voxel size
-            x, y, z = pc.T
-            rho = torch.sqrt(x ** 2 + y ** 2) / self.voxel_size
-            phi = torch.atan2(y, x) * 180 / np.pi  # corresponds to a split each 1°
-            z = z / self.voxel_size
-            coords_aug = torch.cat((rho[:, None], phi[:, None], z[:, None]), 1)
-        else:
-            coords_aug = pc / self.voxel_size
-
-        # Voxelization with MinkowskiEngine
-        discrete_coords, indexes, inverse_indexes = ME.utils.sparse_quantize(
-            coords_aug.contiguous(), return_index=True, return_inverse=True
-        )
-        # indexes here are the indexes of points kept after the voxelization
-        pairing_points = inverse_indexes[pairing_points]
-
-        unique_feats = intensity[indexes]
+        voxels, coordinates, num_points = self._voxelize(pc)
 
         discrete_coords = torch.cat(
             (
-                torch.zeros(discrete_coords.shape[0], 1, dtype=torch.int32),
-                discrete_coords,
+                torch.zeros(coordinates.shape[0], 1, dtype=torch.int32),
+                torch.tensor(coordinates),
             ),
             1,
         )
+        voxels = torch.tensor(voxels)
+        num_points = torch.tensor(num_points)
 
         return (
+            pc,
             discrete_coords,
-            unique_feats,
+            voxels,
             images,
             pairing_points,
             pairing_images,
-            inverse_indexes,
+            num_points,
             superpixels,
         )

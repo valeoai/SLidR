@@ -1,4 +1,5 @@
 import os
+import argparse
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -7,7 +8,7 @@ from skimage.segmentation import slic
 from nuscenes.nuscenes import NuScenes
 
 
-def n(cam_token):
+def compute_slic(cam_token):
     cam = nusc.get("sample_data", cam_token)
     im = Image.open(os.path.join(nusc.dataroot, cam["filename"]))
     segments_slic = slic(
@@ -19,10 +20,27 @@ def n(cam_token):
     )
 
 
+def compute_slic_30(cam_token):
+    cam = nusc.get("sample_data", cam_token)
+    im = Image.open(os.path.join(nusc.dataroot, cam["filename"]))
+    segments_slic = slic(
+        im, n_segments=30, compactness=6, sigma=3.0, start_label=0
+    ).astype(np.uint8)
+    im = Image.fromarray(segments_slic)
+    im.save(
+        "./superpixels/nuscenes/superpixels_slic_30/" + cam["token"] + ".png"
+    )
+
+
 if __name__ == "__main__":
     nuscenes_path = "datasets/nuscenes"
-
+    parser = argparse.ArgumentParser(description="arg parser")
+    parser.add_argument(
+        "--model", type=str, default="minkunet", help="specify the model targeted, either minkunet or voxelnet"
+    )
     assert os.path.exists(nuscenes_path), f"nuScenes not found in {nuscenes_path}"
+    args = parser.parse_args()
+    assert args.model in ["minkunet", "voxelnet"]
     nusc = NuScenes(
         version="v1.0-trainval", dataroot=nuscenes_path, verbose=False
     )
@@ -41,8 +59,12 @@ if __name__ == "__main__":
             current_sample_token = scene["first_sample_token"]
             while current_sample_token != "":
                 current_sample = nusc.get("sample", current_sample_token)
+                if args.model == "minkunet":
+                    func = compute_slic
+                elif args.model == "voxelnet":
+                    func = compute_slic_30
                 p.map(
-                    n,
+                    func,
                     [
                         current_sample["data"][camera_name]
                         for camera_name in camera_list

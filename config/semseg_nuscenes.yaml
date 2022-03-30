@@ -5,8 +5,6 @@ cylindrical_coordinates : True
 # size of the voxel in each dimension for cartesian coordinates,
 # and in rho and z for cylindrical (angular is always 1°)
 voxel_size : 0.1
-# whether to use the intensity, or dummy colors as inputs
-use_intensity : True
 batch_size : 16
 # learning rate
 optimizer : 'sgd'

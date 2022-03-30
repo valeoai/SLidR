@@ -5,8 +5,6 @@ cylindrical_coordinates : True
 # size of the voxel in each dimension for cartesian coordinates,
 # and in rho and z for cylindrical (angular is always 1°)
 voxel_size : 0.1
-# whether to use the intensity, or dummy colors as inputs
-use_intensity : True
 batch_size : 4
 # learning rate
 lr : 0.5
@@ -24,6 +22,8 @@ model_n_out : 64
 bn_momentum : 0.05
 crop_size : [224, 416]
 crop_ratio : [1.5555555555555556, 1.8888888888888888]
+# point cloud backbone to use among "minkunet" and "voxelnet"
+model_points : "minkunet"
 # which image pretraining to chose among:
 # 'imagenet','obow', 'pixpro', 'moco_v1', 'moco_v2', 'swav',
 # 'deepcluster_v2', 'dino', 'moco_coco'
@@ -38,7 +38,7 @@ NCE_temperature : 0.07
 # number of positive matches in the InfoNCE loss
 num_matches : 4096
 # whether to use the true validation set or the custom parametrization set
-training : "parametrize"  # 'parametrize'
+training : "parametrize"
 # transformations to apply to the clouds
 transforms_clouds : ["Rotation", "FlipAxis"]
 # transformations to apply to both the clouds and the images among:

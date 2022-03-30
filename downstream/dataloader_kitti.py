@@ -68,7 +68,6 @@ class SemanticKITTIDataset(Dataset):
         self.transforms = transforms
         self.voxel_size = config["voxel_size"]
         self.cylinder = config["cylindrical_coordinates"]
-        self.use_intensity = config["use_intensity"]
 
         # a skip ratio can be used to reduce the dataset size
         # and accelerate experiments
@@ -148,10 +147,7 @@ class SemanticKITTIDataset(Dataset):
         discrete_coords, indexes, inverse_indexes = sparse_quantize(
             coords_aug, return_index=True, return_inverse=True
         )
-        if self.use_intensity:
-            unique_feats = torch.tensor(points[indexes][:, 3:] + 1.)
-        else:
-            unique_feats = torch.ones(discrete_coords.shape, dtype=torch.int32)
+        unique_feats = torch.tensor(points[indexes][:, 3:] + 1.)
 
         if self.labels:
             points_labels = torch.tensor(

@@ -2,10 +2,19 @@ import torch
 import numpy as np
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
-from pretrain.dataloader_nuscenes import (
-    NuScenesMatchDataset,
-    default_collate_pair_fn,
-)
+try:
+    from pretrain.dataloader_nuscenes import (
+        NuScenesMatchDataset,
+        minkunet_collate_pair_fn,
+    )
+except ImportError:
+    NuScenesMatchDataset = None
+    minkunet_collate_pair_fn = None
+try:
+    from pretrain.dataloader_nuscenes_spconv import NuScenesMatchDatasetSpconv, spconv_collate_pair_fn
+except ImportError:
+    NuScenesMatchDatasetSpconv = None
+    spconv_collate_pair_fn = None
 from utils.transforms import (
     make_transforms_clouds,
     make_transforms_asymmetrical,
@@ -27,8 +36,10 @@ class PretrainDataModule(pl.LightningDataModule):
         mixed_transforms_train = make_transforms_asymmetrical(self.config)
         cloud_transforms_val = None
         mixed_transforms_val = make_transforms_asymmetrical_val(self.config)
-        if self.config["dataset"].lower() == "nuscenes":
+        if self.config["dataset"].lower() == "nuscenes" and self.config["model_points"] == "minkunet":
             Dataset = NuScenesMatchDataset
+        elif self.config["dataset"].lower() == "nuscenes" and self.config["model_points"] == "voxelnet":
+            Dataset = NuScenesMatchDatasetSpconv
         else:
             raise Exception("Dataset Unknown")
 
@@ -53,8 +64,6 @@ class PretrainDataModule(pl.LightningDataModule):
             mixed_transforms=mixed_transforms_val,
             config=self.config,
             cached_nuscenes=self.train_dataset.nusc
-            if NuScenesMatchDataset == Dataset
-            else None,
         )
 
     def train_dataloader(self):
@@ -63,6 +72,10 @@ class PretrainDataModule(pl.LightningDataModule):
             num_workers = self.config["num_threads"] // self.config["num_gpus"]
         else:
             num_workers = self.config["num_threads"]
+        if self.config["model_points"] == "minkunet":
+            default_collate_pair_fn = minkunet_collate_pair_fn
+        else:
+            default_collate_pair_fn = spconv_collate_pair_fn
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
@@ -82,6 +95,10 @@ class PretrainDataModule(pl.LightningDataModule):
             num_workers = self.config["num_threads"] // self.config["num_gpus"]
         else:
             num_workers = self.config["num_threads"]
+        if self.config["model_points"] == "minkunet":
+            default_collate_pair_fn = minkunet_collate_pair_fn
+        else:
+            default_collate_pair_fn = spconv_collate_pair_fn
         return DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,

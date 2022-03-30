@@ -3,13 +3,81 @@ import re
 import torch
 import numpy as np
 import torch.optim as optim
-import MinkowskiEngine as ME
 import pytorch_lightning as pl
 from pretrain.criterion import NCELoss
 from pytorch_lightning.utilities import rank_zero_only
 
 
-class LightningPretrain(pl.LightningModule):
+def bilinear_interpolate_torch(im, x, y):
+    """
+    Args:
+        im: (H, W, C) [y, x]
+        x: (N)
+        y: (N)
+
+    Returns:
+
+    """
+    x0 = torch.floor(x).long()
+    x1 = x0 + 1
+
+    y0 = torch.floor(y).long()
+    y1 = y0 + 1
+
+    x0 = torch.clamp(x0, 0, im.shape[1] - 1)
+    x1 = torch.clamp(x1, 0, im.shape[1] - 1)
+    y0 = torch.clamp(y0, 0, im.shape[0] - 1)
+    y1 = torch.clamp(y1, 0, im.shape[0] - 1)
+
+    Ia = im[y0, x0]
+    Ib = im[y1, x0]
+    Ic = im[y0, x1]
+    Id = im[y1, x1]
+
+    wa = (x1.type_as(x) - x) * (y1.type_as(y) - y)
+    wb = (x1.type_as(x) - x) * (y - y0.type_as(y))
+    wc = (x - x0.type_as(x)) * (y1.type_as(y) - y)
+    wd = (x - x0.type_as(x)) * (y - y0.type_as(y))
+    ans = torch.t((torch.t(Ia) * wa)) + torch.t(torch.t(Ib) * wb) + torch.t(torch.t(Ic) * wc) + torch.t(torch.t(Id) * wd)
+    return ans
+
+
+def interpolate_from_bev_features(keypoints, bev_features, batch_size, bev_stride):
+    """
+    Args:
+        keypoints: (N1 + N2 + ..., 4)
+        bev_features: (B, C, H, W)
+        batch_size:
+        bev_stride:
+
+    Returns:
+        point_bev_features: (N1 + N2 + ..., C)
+    """
+    # voxel_size = [0.05, 0.05, 0.1]  # KITTI
+    voxel_size = [0.1, 0.1, 0.2]  # nuScenes
+    # point_cloud_range = np.array([0., -40., -3., 70.4, 40., 1.], dtype=np.float32)  # KITTI
+    point_cloud_range = np.array([-51.2, -51.2, -5.0, 51.2, 51.2, 3.0], dtype=np.float32)  # nuScenes
+    x_idxs = (keypoints[:, 1] - point_cloud_range[0]) / voxel_size[0]
+    y_idxs = (keypoints[:, 2] - point_cloud_range[1]) / voxel_size[1]
+
+    x_idxs = x_idxs / bev_stride
+    y_idxs = y_idxs / bev_stride
+
+    point_bev_features_list = []
+    for k in range(batch_size):
+        bs_mask = (keypoints[:, 0] == k)
+
+        cur_x_idxs = x_idxs[bs_mask]
+        cur_y_idxs = y_idxs[bs_mask]
+        cur_bev_features = bev_features[k].permute(1, 2, 0)  # (H, W, C)
+        point_bev_features = bilinear_interpolate_torch(cur_bev_features, cur_x_idxs, cur_y_idxs)
+        point_bev_features_list.append(point_bev_features)
+
+    point_bev_features = torch.cat(point_bev_features_list, dim=0)  # (N1 + N2 + ..., C)
+    return point_bev_features
+
+
+class LightningPretrainSpconv(pl.LightningModule):
     def __init__(self, model_points, model_images, config):
         super().__init__()
         self.model_points = model_points
@@ -47,15 +115,14 @@ class LightningPretrain(pl.LightningModule):
         optimizer.zero_grad(set_to_none=True)
 
     def training_step(self, batch, batch_idx):
-        sparse_input = ME.SparseTensor(batch["sinput_F"], batch["sinput_C"])
-        output_points = self.model_points(sparse_input).F
+        output_points = self.model_points(batch["voxels"], batch["coordinates"])
+        output_points = interpolate_from_bev_features(batch["pc"], output_points, self.batch_size, self.model_points.bev_stride)
         self.model_images.eval()
         self.model_images.decoder.train()
         output_images = self.model_images(batch["input_I"])
 
-        del batch["sinput_F"]
-        del batch["sinput_C"]
-        del sparse_input
+        del batch["voxels"]
+        del batch["coordinates"]
         # each loss is applied independtly on each GPU
         losses = [
             getattr(self, loss)(batch, output_points, output_images)
@@ -136,8 +203,8 @@ class LightningPretrain(pl.LightningModule):
         return super().training_epoch_end(outputs)
 
     def validation_step(self, batch, batch_idx):
-        sparse_input = ME.SparseTensor(batch["sinput_F"], batch["sinput_C"])
-        output_points = self.model_points(sparse_input).F
+        output_points = self.model_points(batch["voxels"], batch["coordinates"])
+        output_points = interpolate_from_bev_features(batch["pc"], output_points, self.batch_size, self.model_points.bev_stride)
         self.model_images.eval()
         output_images = self.model_images(batch["input_I"])
 

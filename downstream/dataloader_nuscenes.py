@@ -90,7 +90,6 @@ class NuScenesDataset(Dataset):
         self.transforms = transforms
         self.voxel_size = config["voxel_size"]
         self.cylinder = config["cylindrical_coordinates"]
-        self.use_intensity = config["use_intensity"]
 
         if phase != "test":
             if cached_nuscenes is not None:
@@ -189,10 +188,7 @@ class NuScenesDataset(Dataset):
         )
 
         # use those voxels features
-        if self.use_intensity is True:
-            unique_feats = torch.tensor(points[indexes][:, 3:])
-        else:
-            unique_feats = torch.ones((discrete_coords.shape[0], 1), dtype=torch.int32)
+        unique_feats = torch.tensor(points[indexes][:, 3:])
 
         if self.labels:
             points_labels = torch.tensor(

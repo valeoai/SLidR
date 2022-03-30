@@ -8,6 +8,7 @@ from pretrain.model_builder import make_model
 from pytorch_lightning.plugins import DDPPlugin
 from pretrain.lightning_trainer import LightningPretrain
 from pretrain.lightning_datamodule import PretrainDataModule
+from pretrain.lightning_trainer_spconv import LightningPretrainSpconv
 
 
 def main():
@@ -16,7 +17,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description="arg parser")
     parser.add_argument(
-        "--cfg_file", type=str, default="config/slidr_nuscenes.yaml", help="specify the config for training"
+        "--cfg_file", type=str, default="config/slidr_minkunet.yaml", help="specify the config for training"
     )
     parser.add_argument(
         "--resume_path", type=str, default=None, help="provide a path to resume an incomplete training"
@@ -36,7 +37,10 @@ def main():
     if config["num_gpus"] > 1:
         model_points = ME.MinkowskiSyncBatchNorm.convert_sync_batchnorm(model_points)
         model_images = nn.SyncBatchNorm.convert_sync_batchnorm(model_images)
-    module = LightningPretrain(model_points, model_images, config)
+    if config["model_points"] == "minkunet":
+        module = LightningPretrain(model_points, model_images, config)
+    elif config["model_points"] == "voxelnet":
+        module = LightningPretrainSpconv(model_points, model_images, config)
     path = os.path.join(config["working_dir"], config["datetime"])
     trainer = pl.Trainer(
         gpus=config["num_gpus"],
