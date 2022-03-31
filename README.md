@@ -2,7 +2,7 @@
 
 Official PyTorch implementation of the method **SLidR**. More details can be found in the paper:
 
-**Image-to-Lidar Self-Supervised Distillation for Autonomous Driving Data**, CVPR 2022 [[arXiv](https://arxiv.org/)]
+**Image-to-Lidar Self-Supervised Distillation for Autonomous Driving Data**, CVPR 2022 [[arXiv](https://arxiv.org/abs/2203.16258)]
 by *Corentin Sautier, Gilles Puy, Spyros Gidaris, Alexandre Boulch, Andrei Bursuc, and Renaud Marlet*
 
 ![Overview of the method](./assets/method.png)
@@ -110,6 +110,7 @@ Random init.                             |84.5    |**57.9**  |71.3    |71.3
 [STRL](https://arxiv.org/abs/2109.00179)*|**84.7**|57.8      |71.9    |71.5
 [PPKT](https://arxiv.org/abs/2104.04687) |83.2    |55.5      |73.8    |70.8
 SLidR                                    |84.4    |57.3      |**74.2**|**71.9**
+
 *STRL has been pre-trained on KITTI, while SLidR and PPKT were pre-trained on nuScenes
 
 #### Results on the validation set using [SECOND](https://www.mdpi.com/1424-8220/18/10/3337):
@@ -118,6 +119,7 @@ Method                                          |Car     |Pedestrian|Cyclist |mA
 Random init.                                    |81.5    |50.9      |66.5    |66.3
 [DeepCluster](https://arxiv.org/abs/1807.05520)*|        |          |        |66.1
 SLidR                                           |81.9    |51.6      |68.5    |**67.3**
+
 *As reimplemented in [ONCE](https://arxiv.org/abs/2106.11037)
 
 
