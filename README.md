@@ -35,6 +35,7 @@ The code provided is compatible with [nuScenes](https://www.nuscenes.org/lidar-s
 
 ### SPconv VoxelNet
 [VoxelNet pre-trained on nuScenes](https://github.com/valeoai/SLidR/releases/download/v1.0/voxelnet_slidr.pt)
+
 [PV-RCNN finetuned on KITTI](https://github.com/valeoai/SLidR/releases/download/v1.0/pvrcnn_slidr.pt)
 
 
@@ -61,7 +62,7 @@ To launch a semantic segmentation, use the following command:
 
 ```python downstream.py --cfg_file="config/semseg_nuscenes.yaml" --pretraining_path="output/pretrain/[...]/model.pt"```
 
-with the previously obtained weights, and any config file. The default config will perform a finetuning on 1% of nuScenes' training set.
+with the previously obtained weights, and any config file. The default config will perform a finetuning on 1% of nuScenes' training set, with the learning rates optimized for the provided pre-training.
 
 To re-evaluate the score of any downstream network, run:
 

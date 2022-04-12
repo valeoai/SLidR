@@ -1,5 +1,5 @@
 import torch
-from model import Res16UNet34C
+from model import MinkUNet
 
 
 def load_state_with_same_shape(model, weights):
@@ -45,7 +45,7 @@ def make_model(config, load_path=None):
     assert not config[
         "normalize_features"
     ], "You shouldn't normalize features for the downstream task"
-    model = Res16UNet34C(1, config["model_n_out"], config)
+    model = MinkUNet(1, config["model_n_out"], config)
     if load_path:
         print("Training with pretrained model")
         checkpoint = torch.load(load_path, map_location="cpu")
