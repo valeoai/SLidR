@@ -318,7 +318,6 @@ class NuScenesMatchDatasetSpconv(Dataset):
 
         if self.cloud_transforms:
             pc = self.cloud_transforms(pc)
-        # pc = torch.cat((pc, intensity), 1)
         if self.mixed_transforms:
             (
                 pc,
@@ -330,6 +329,8 @@ class NuScenesMatchDatasetSpconv(Dataset):
             ) = self.mixed_transforms(
                 pc, intensity, images, pairing_points, pairing_images, superpixels
             )
+
+        pc = torch.cat((pc, intensity), 1)
 
         voxels, coordinates, num_points = self._voxelize(pc)
 
