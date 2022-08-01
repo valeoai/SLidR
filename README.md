@@ -9,11 +9,13 @@ by *Corentin Sautier, Gilles Puy, Spyros Gidaris, Alexandre Boulch, Andrei Bursu
 
 If you use SLidR in your research, please consider citing:
 ```
-@inproceedings{SLidR,
-   title = {Image-to-Lidar Self-Supervised Distillation for Autonomous Driving Data},
-   author = {Corentin Sautier and Gilles Puy and Spyros Gidaris and Alexandre Boulch and Andrei Bursuc and Renaud Marlet},
-   journal = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
-   year = {2022}
+@InProceedings{SLidR,
+    author    = {Sautier, Corentin and Puy, Gilles and Gidaris, Spyros and Boulch, Alexandre and Bursuc, Andrei and Marlet, Renaud},
+    title     = {Image-to-Lidar Self-Supervised Distillation for Autonomous Driving Data},
+    booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+    month     = {June},
+    year      = {2022},
+    pages     = {9891-9901}
 }
 ```
 
