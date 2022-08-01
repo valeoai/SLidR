@@ -11,3 +11,4 @@ multiprocessing
 scikit-image == 0.18.2
 torchvision == 0.9.1
 spconv == 1.2.1
+torchmetrics == 0.4.0
