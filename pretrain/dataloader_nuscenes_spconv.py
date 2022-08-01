@@ -6,10 +6,10 @@ from PIL import Image
 from pyquaternion import Quaternion
 from torch.utils.data import Dataset
 from nuscenes.nuscenes import NuScenes
+from spconv.pytorch.utils import PointToVoxel
 from nuscenes.utils.geometry_utils import view_points
 from nuscenes.utils.splits import create_splits_scenes
 from nuscenes.utils.data_classes import LidarPointCloud
-from spconv.utils import VoxelGeneratorV2 as VoxelGenerator
 
 
 CUSTOM_SPLIT = [
@@ -123,11 +123,12 @@ class NuScenesMatchDatasetSpconv(Dataset):
             self.point_cloud_range = np.array([-51.2, -51.2, -5.0, 51.2, 51.2, 3.0], dtype=np.float32)  # nuScenes
             MAX_POINTS_PER_VOXEL = 10  # nuScenes
             MAX_NUMBER_OF_VOXELS = 60000  # nuScenes
-            self._voxel_generator = VoxelGenerator(
-                voxel_size=self.voxel_size,
-                point_cloud_range=self.point_cloud_range,
-                max_num_points=MAX_POINTS_PER_VOXEL,
-                max_voxels=MAX_NUMBER_OF_VOXELS
+            self._voxel_generator = PointToVoxel(
+                vsize_xyz=self.voxel_size,
+                coors_range_xyz=self.point_cloud_range,
+                num_point_features=4,
+                max_num_points_per_voxel=MAX_POINTS_PER_VOXEL,
+                max_num_voxels=MAX_NUMBER_OF_VOXELS
             )
         else:
             raise Exception("Dataset unknown")
@@ -297,9 +298,8 @@ class NuScenesMatchDatasetSpconv(Dataset):
         return len(self.list_keyframes)
 
     def _voxelize(self, points):
-        voxel_output = self._voxel_generator.generate(points.numpy())
-        voxels, coordinates, num_points = \
-            voxel_output['voxels'], voxel_output['coordinates'], voxel_output['num_points_per_voxel']
+        voxel_output = self._voxel_generator.generate_voxel_with_id(points)
+        voxels, coordinates, num_points, indexes = voxel_output
         return voxels, coordinates, num_points
 
     def __getitem__(self, idx):
@@ -318,7 +318,6 @@ class NuScenesMatchDatasetSpconv(Dataset):
 
         if self.cloud_transforms:
             pc = self.cloud_transforms(pc)
-        # pc = torch.cat((pc, intensity), 1)
         if self.mixed_transforms:
             (
                 pc,
@@ -331,17 +330,19 @@ class NuScenesMatchDatasetSpconv(Dataset):
                 pc, intensity, images, pairing_points, pairing_images, superpixels
             )
 
+        pc = torch.cat((pc, intensity), 1)
+
         voxels, coordinates, num_points = self._voxelize(pc)
 
         discrete_coords = torch.cat(
             (
                 torch.zeros(coordinates.shape[0], 1, dtype=torch.int32),
-                torch.tensor(coordinates),
+                coordinates,
             ),
             1,
         )
-        voxels = torch.tensor(voxels)
-        num_points = torch.tensor(num_points)
+        voxels = voxels
+        num_points = num_points
 
         return (
             pc,

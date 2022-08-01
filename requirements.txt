@@ -10,5 +10,5 @@ pyquaternion
 multiprocessing
 scikit-image == 0.18.2
 torchvision == 0.9.1
-spconv == 1.2.1
+spconv == 2.1.21
 torchmetrics == 0.4.0
