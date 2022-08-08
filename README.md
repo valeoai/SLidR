@@ -57,6 +57,7 @@ To launch a pre-training of the Minkowski SR-UNet (minkunet) on nuScenes:
 
 You can alternatively replace minkunet with voxelnet to pre-train a PV-RCNN backbone.  
 Weights of the pre-training can be found in the output folder, and can be re-used during a downstream task.
+If you wish to use multiple GPUs, please scale the learning rate and batch size accordingly.
 
 ### Semantic segmentation
 
@@ -77,8 +78,8 @@ If you wish to reevaluate the linear probing, the experiments in the paper were 
 All experiments for object detection have been done using [OpenPCDet](https://github.com/open-mmlab/OpenPCDet).
 
 
-## Results
-All results are obtained with a pre-training on nuScenes
+## Published results
+All results are obtained with a pre-training on nuScenes.
 
 ### Few-shot semantic segmentation
 
@@ -107,6 +108,9 @@ Method                                  |5%      |10%     |20%
 Random init.                            |56.1    |59.1    |61.6
 [PPKT](https://arxiv.org/abs/2104.04687)|**57.8**|60.1    |61.2
 SLidR                                   |**57.8**|**61.4**|**62.4**
+
+## Unpublished preliminary results
+All results are obtained with a pre-training on nuScenes.
 
 #### Results on the validation set using [PV-RCNN](https://arxiv.org/abs/1912.13192):
 Method                                   |Car     |Pedestrian|Cyclist |mAP@40
