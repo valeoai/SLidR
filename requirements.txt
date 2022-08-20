@@ -1,3 +1,4 @@
+# please use the cuda version 10.2
 torch == 1.8.1
 numpy == 1.20.2
 MinkowskiEngine == 0.5.3
@@ -10,5 +11,5 @@ pyquaternion
 multiprocessing
 scikit-image == 0.18.2
 torchvision == 0.9.1
-spconv == 1.2.1
+spconv == 2.1.1
 torchmetrics == 0.4.0
