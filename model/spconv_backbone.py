@@ -407,5 +407,6 @@ class VoxelNet(VoxelBackBone8x):
         )
         sp_tensor = super(VoxelNet, self).forward(sp_tensor)
         sp_tensor = self.final(sp_tensor)
+        sp_tensor = sp_tensor.replace_feature(nn.functional.normalize(sp_tensor.features, dim=1))
         sp_tensor = self.height_compression(sp_tensor)
         return sp_tensor
