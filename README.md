@@ -40,7 +40,6 @@ The code provided is compatible with [nuScenes](https://www.nuscenes.org/lidar-s
 
 [PV-RCNN finetuned on KITTI](https://github.com/valeoai/SLidR/releases/download/v1.0/pvrcnn_slidr.pt)
 
-
 ## Reproducing the results
 
 ### Pre-computing the superpixels (required)
@@ -130,6 +129,13 @@ Random init.                                    |81.5    |50.9      |66.5    |66
 SLidR                                           |81.9    |51.6      |68.5    |**67.3**
 
 *As reimplemented in [ONCE](https://arxiv.org/abs/2106.11037)
+
+## Visualizations
+
+For visualization you need a pre-training containing both 2D & 3D models. We provide the raw [SR-UNet & ResNet50 pre-trained on nuScenes](https://github.com/valeoai/SLidR/releases/download/v1.1/minkunet_slidr_1gpu_raw.pt).
+The image part of the pre-trained weights are identical for almost all layers to those of [MoCov2](https://github.com/facebookresearch/moco) (He et al.)
+
+The [visualization code](utils/visualization.ipynb) allows to assess the similarities between points and pixels, as shown in the article.
 
 
 ## Acknowledgment

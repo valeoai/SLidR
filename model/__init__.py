@@ -5,5 +5,5 @@ except ImportError:
     MinkUNet = None
 try:
     from model.spconv_backbone import VoxelNet
-except ImportError:
+except (ImportError, AttributeError):
     VoxelNet = None
