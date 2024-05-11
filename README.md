@@ -101,7 +101,7 @@ SLidR           |**39.0**|**52.2**|**58.8**|**66.2**|**74.6**
 
 ### Object detection on KITTI
 
-#### Results on the validation set using Minkowski SR-Unet with a fraction of the training labels:
+#### Results on the validation set using Minkowski SR-Unet with a fraction of the training labels (we modify the PointRCNN model by replacing the PointNet++ backbone with our pre-trained backbone):
 Method                                  |5%      |10%     |20%     
 ---                                     |:-:     |:-:     |:-:
 Random init.                            |56.1    |59.1    |61.6
