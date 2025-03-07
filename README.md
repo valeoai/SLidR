@@ -70,7 +70,7 @@ To re-evaluate the score of any downstream network, run:
 
 ```python evaluate.py --resume_path="output/downstream/[...]/model.pt" --dataset="nuscenes"```
 
-If you wish to reevaluate the linear probing, the experiments in the paper were obtained with `lr=0.05`, `lr_head=null` and `freeze_layers=True`.
+If you wish to reevaluate the linear probing, the experiments in the paper were obtained with `lr=0.05`, `lr_head=null`, `freeze_layers=True` and `dataset_skip_step=1`.
 
 ### Object detection
 
